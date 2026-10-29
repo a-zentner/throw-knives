@@ -18,6 +18,8 @@
     cursor:pointer;
   }
 </style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6679880609704572"
+     crossorigin="anonymous"></script>
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -176,7 +178,7 @@ function beep(freq, dur, type = 'square', vol = 0.05, delay = 0){
 /* ========================================================
    СОХРАНЕНИЕ
 ======================================================== */
-const save = { level: 1, coins: 0 };
+const save = { level: 1, coins: 0, skins: ['STANDARD'], equippedSkin: 'STANDARD' };
 
 function loadSave(){
   try{
@@ -185,6 +187,8 @@ function loadSave(){
       const d = JSON.parse(s);
       save.level = Math.max(1, d.level || 1);
       save.coins = Math.max(0, d.coins || 0);
+      if(Array.isArray(d.skins) && d.skins.length) save.skins = d.skins;
+      if(d.equippedSkin) save.equippedSkin = d.equippedSkin;
     }
   }catch(e){}
 }
@@ -233,14 +237,123 @@ const knifeSprite = (() => {
   return c;
 })();
 
+const tarantulSprite = (() => {
+  const c = document.createElement('canvas');
+  c.width = KN_W; c.height = KN_H;
+  const g = c.getContext('2d');
+  const put = (x, y, col) => { g.fillStyle = col; g.fillRect(x + KN_OX, y + KN_OY, 1, 1); };
+
+  const seg = '#eef4fb';
+  const dark= '#b6c2d4';
+  const colr= '#a9713a';
+  const darkR='#6b4226';
+
+  put(0, -16, seg);
+
+  for(let y = -14; y <= -11; y++){ put(-1, y, dark); put(0, y, seg); put(1, y, dark); }
+  for(let y = -9;  y <= -6;  y++){ put(-1, y, dark); put(0, y, seg); put(1, y, dark); }
+  for(let y = -4;  y <= -1;  y++){ put(-1, y, dark); put(0, y, seg); put(1, y, dark); }
+  for(let y = 1;   y <= 4;   y++){ put(-1, y, darkR); put(0, y, colr); put(1, y, darkR); }
+
+  for(let x = -2; x <= 2; x++) put(x, 5, colr);
+  for(let x = -1; x <= 1; x++) put(x, 6, darkR);
+  put(0, 7, darkR);
+
+  return c;
+})();
+
+const paradoxSprite = (() => {
+  const c = document.createElement('canvas');
+  c.width = KN_W; c.height = KN_H;
+  const g = c.getContext('2d');
+  const put = (x, y, col) => { g.fillStyle = col; g.fillRect(x + KN_OX, y + KN_OY, 1, 1); };
+
+  const seg = '#cfd8e3';
+  const colr= '#7ee081';
+  const dark='#a8862f';
+
+  for(let y = -14; y <= -1; y++){ put(0, y, seg); if(y%2===0){put(-1,y,dark);put(1,y,dark);} }
+  for(let y = 1; y <= 6; y++){ put(-1, y, colr); put(0, y, colr); put(1, y, colr); }
+  for(let x = -2; x <= 2; x++) put(x, 7, dark);
+  put(0, 8, dark);
+
+  return c;
+})();
+
+const kilitaSprite = (() => {
+  const c = document.createElement('canvas');
+  c.width = KN_W; c.height = KN_H;
+  const g = c.getContext('2d');
+  const put = (x, y, col) => { g.fillStyle = col; g.fillRect(x + KN_OX, y + KN_OY, 1, 1); };
+
+  const seg = '#f2c14e';
+  const colr= '#e05a5a';
+  const dark='#a8862f';
+
+  for(let y = -14; y <= -8; y++){ put(-1,y,dark); put(0,y,seg); put(1,y,dark); }
+  for(let y = -6; y <= -2; y++){ put(0,y,colr); }
+  put(0,-1,colr);
+  for(let y = 1; y <= 6; y++){ put(-1,y,dark); put(0,y,dark); put(1,y,dark); }
+  for(let x = -2; x <= 2; x++) put(x, 7, colr);
+  put(0, 8, colr);
+
+  return c;
+})();
+
+const troyaSprite = (() => {
+  const c = document.createElement('canvas');
+  c.width = KN_W; c.height = KN_H;
+  const g = c.getContext('2d');
+  const put = (x, y, col) => { g.fillStyle = col; g.fillRect(x + KN_OX, y + KN_OY, 1, 1); };
+
+  const seg = '#7ee081';
+  const colr= '#f2c14e';
+  const dark='#6b4226';
+
+  for(let y = -14; y <= -1; y+=2){ put(-1,y,dark); put(0,y,seg); put(1,y,dark); }
+  for(let y = -13; y <= -1; y+=2){ put(0,y,colr); }
+  for(let y = 1; y <= 6; y++){ put(-1,y,colr); put(0,y,dark); put(1,y,colr); }
+  for(let x = -2; x <= 2; x++) put(x, 7, dark);
+  put(0, 8, dark);
+
+  return c;
+})();
+
+const lovaleSprite = (() => {
+  const c = document.createElement('canvas');
+  c.width = KN_W; c.height = KN_H;
+  const g = c.getContext('2d');
+  const put = (x, y, col) => { g.fillStyle = col; g.fillRect(x + KN_OX, y + KN_OY, 1, 1); };
+
+  const seg = '#b6c2d4';
+  const colr= '#eef4fb';
+  const dark='#7d8bb0';
+
+  for(let y = -14; y <= -2; y++){ put(0,y,seg); }
+  put(-1,-14,dark); put(1,-14,dark);
+  put(-1,-1,dark); put(0,-1,colr); put(1,-1,dark);
+  for(let y = 1; y <= 6; y++){ put(-1,y,dark); put(0,y,colr); put(1,y,dark); }
+  for(let x = -2; x <= 2; x++) put(x, 7, colr);
+  put(0, 8, colr);
+
+  return c;
+})();
+
+function getSkinSprite(){
+  const sprites = [knifeSprite, tarantulSprite, paradoxSprite, kilitaSprite, troyaSprite, lovaleSprite];
+  const idx = SKINS.findIndex(s => s.name === save.equippedSkin);
+  return sprites[idx >= 0 ? idx : 0];
+}
+
 function drawKnife(x, y, a){
+  const sp = getSkinSprite();
   if(Math.abs(a) < 0.0015){
-    ctx.drawImage(knifeSprite, Math.round(x) - KN_OX, Math.round(y) - KN_OY);
+    ctx.drawImage(sp, Math.round(x) - KN_OX, Math.round(y) - KN_OY);
   } else {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(a);
-    ctx.drawImage(knifeSprite, -KN_OX, -KN_OY);
+    ctx.drawImage(sp, -KN_OX, -KN_OY);
     ctx.restore();
   }
 }
@@ -316,7 +429,11 @@ for(let i = 0; i < 70; i++){
 ======================================================== */
 const menuPlayBtn  = { x: 55, y: 214, w: 130, h: 28, label: 'PLAY'  };
 const menuStoreBtn = { x: 55, y: 254, w: 130, h: 28, label: 'STORE' };
-const storeBackBtn = { x: 55, y: 270, w: 130, h: 28, label: 'BACK'  };
+const storeSkinsBtn   = { x: 65, y: 108, w: 110, h: 28, label: 'SKINS'   };
+const storeUpgradesBtn = { x: 65, y: 146, w: 110, h: 28, label: 'UPGRADES' };
+const storeBackBtn    = { x: 55, y: 270, w: 130, h: 28, label: 'BACK'  };
+const skinsBackBtn    = { x: 55, y: 270, w: 130, h: 28, label: 'BACK'  };
+const upgradesBackBtn = { x: 55, y: 270, w: 130, h: 28, label: 'BACK'  };
 const overRetryBtn = { x: 40,  y: 230, w: 75,  h: 26, label: 'RETRY' };
 const overMenuBtn  = { x: 125, y: 230, w: 75,  h: 26, label: 'MENU'  };
 
@@ -341,7 +458,17 @@ function drawButton(btn, baseCol, borderCol, textCol){
 /* ========================================================
    СОСТОЯНИЕ ИГРЫ
 ======================================================== */
-let state = 'menu';               // menu | store | playing | clear | over
+let state = 'menu';               // menu | store | skins | upgrades | playing | clear | over
+let skinCards = [];
+
+const SKINS = [
+  { name: 'STANDARD', price: null },
+  { name: 'TARANTUL', price: 500 },
+  { name: 'PARODOX',  price: 1000 },
+  { name: 'KILITA',   price: 1500 },
+  { name: 'TROYA',    price: 3000 },
+  { name: 'LOVALE',   price: 5000 },
+];
 let log = { angle: 0 };
 let stuck   = [];
 let flying  = [];
@@ -688,8 +815,8 @@ function drawMenu(){
   drawKnife(42, 74, -0.35 + Math.sin(t * 1.2) * 0.06);
   drawKnife(W - 42, 74, 0.35 - Math.sin(t * 1.2) * 0.06);
 
-  drawTextC('KNIFE', W / 2, 54, C.gold, 4);
-  drawTextC('HIT',   W / 2, 84, C.gold, 4);
+  drawTextC('THROV', W / 2, 54, C.gold, 4);
+  drawTextC('KNIVES',W / 2, 84, C.gold, 4);
   drawTextC('PIXEL', W / 2, 118, C.dim, 2);
 
   // панель статистики
@@ -729,7 +856,98 @@ function drawStore(){
   ctx.fillRect(px, py, 1, ph);
   ctx.fillRect(px + pw - 1, py, 1, ph);
 
-  drawHammer(W / 2 - 3, py + 22);
+  drawButton(storeSkinsBtn,  '#36365c', '#5a5aa3', '#e6e6f5');
+  drawButton(storeUpgradesBtn, '#36365c', '#5a5aa3', '#e6e6f5');
+
+  drawButton(storeBackBtn, '#36365c', '#5a5aa3', '#e6e6f5');
+}
+
+function drawSkins(){
+  ctx.fillStyle = 'rgba(18,20,31,0.96)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawTextC('SKINS', W / 2, 26, C.gold, 3);
+
+  const px = 25, py = 78, pw = 190, ph = 180;
+  ctx.fillStyle = '#1a1f33';
+  ctx.fillRect(px, py, pw, ph);
+  ctx.fillStyle = '#3a4160';
+  ctx.fillRect(px, py, pw, 1);
+  ctx.fillRect(px, py + ph - 1, pw, 1);
+  ctx.fillRect(px, py, 1, ph);
+  ctx.fillRect(px + pw - 1, py, 1, ph);
+
+  const colX = [px + 55, px + 135];
+  const rowY = [py + 30, py + 85, py + 140];
+
+  skinCards = [];
+
+  SKINS.forEach((s, i) => {
+    const cx = colX[i % 2];
+    const cy = rowY[Math.floor(i / 2)];
+    const owned = save.skins.includes(s.name);
+    const equipped = save.equippedSkin === s.name;
+    const affordable = s.price === null || save.coins >= s.price;
+
+    skinCards.push({ x: cx - 16, y: cy - 16, w: 32, h: 32, index: i });
+
+    ctx.fillStyle = owned ? '#141826' : '#0e111c';
+    ctx.fillRect(cx - 16, cy - 16, 32, 32);
+
+    let borderCol = '#2a3150';
+    if(equipped) borderCol = C.gold;
+    else if(owned) borderCol = '#3a4160';
+    else if(!affordable) borderCol = '#1a1f33';
+
+    ctx.fillStyle = borderCol;
+    ctx.fillRect(cx - 16, cy - 16, 32, 1);
+    ctx.fillRect(cx - 16, cy + 15, 32, 1);
+    ctx.fillRect(cx - 16, cy - 16, 1, 32);
+    ctx.fillRect(cx + 15, cy - 16, 1, 32);
+
+    const sprite = [knifeSprite, tarantulSprite, paradoxSprite, kilitaSprite, troyaSprite, lovaleSprite][i];
+
+    if(!owned && !affordable){
+      ctx.globalAlpha = 0.35;
+    }
+    ctx.drawImage(sprite, cx - 3, cy - 14);
+    ctx.globalAlpha = 1;
+
+    drawTextC(s.name, cx, cy + 19, owned ? C.text : C.dim, 1);
+
+    if(s.price === null){
+      drawTextC('FREE', cx, cy + 28, C.green, 1);
+    } else if(!owned){
+      const coinStr = String(s.price);
+      const cw = measure(coinStr, 1);
+      const coinW = 6;
+      const totalW = coinW + 2 + cw;
+      const sx = Math.round(cx - totalW / 2);
+      drawCoinIcon(sx, cy + 28);
+      drawText(coinStr, sx + coinW + 2, cy + 28, affordable ? C.gold : C.dim, 1);
+    } else {
+      drawTextC('OWNED', cx, cy + 28, C.green, 1);
+    }
+  });
+
+  drawButton(skinsBackBtn, '#36365c', '#5a5aa3', '#e6e6f5');
+}
+function drawUpgrades(){ drawSubStore('UPGRADES', upgradesBackBtn); }
+
+function drawSubStore(title, backBtn){
+  ctx.fillStyle = 'rgba(18,20,31,0.96)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawTextC(title, W / 2, 26, C.gold, 3);
+
+  const px = 25, py = 78, pw = 190, ph = 140;
+  ctx.fillStyle = '#1a1f33';
+  ctx.fillRect(px, py, pw, ph);
+  ctx.fillStyle = '#3a4160';
+  ctx.fillRect(px, py, pw, 1);
+  ctx.fillRect(px, py + ph - 1, pw, 1);
+  ctx.fillRect(px, py, 1, ph);
+  ctx.fillRect(px + pw - 1, py, 1, ph);
 
   const t = performance.now() / 1000;
   const blink = Math.sin(t * 3) > -0.55 ? 1 : 0.35;
@@ -737,9 +955,7 @@ function drawStore(){
   drawTextC('В РАЗРАБОТКЕ', W / 2, py + 62, C.gold, 2);
   ctx.globalAlpha = 1;
 
-  drawTextC('СЛЕДИТЕ ЗА ОБНОВЛЕНИЯМИ', W / 2, py + 100, C.dim, 1);
-
-  drawButton(storeBackBtn, '#36365c', '#5a5aa3', '#e6e6f5');
+  drawButton(backBtn, '#36365c', '#5a5aa3', '#e6e6f5');
 }
 
 function drawHammer(x, y){
@@ -779,6 +995,8 @@ function render(){
 
   if(state === 'menu'){  drawMenu();  return; }
   if(state === 'store'){ drawStore(); return; }
+  if(state === 'skins'){ drawSkins(); return; }
+  if(state === 'upgrades'){ drawUpgrades(); return; }
 
   ctx.save();
   if(shake > 0){
@@ -834,6 +1052,26 @@ function onPointer(e){
     if(hit(menuStoreBtn, p)){ state = 'store'; return; }
   } else if(state === 'store'){
     if(hit(storeBackBtn, p)){ state = 'menu'; return; }
+    if(hit(storeSkinsBtn, p)){ state = 'skins'; return; }
+    if(hit(storeUpgradesBtn, p)){ state = 'upgrades'; return; }
+  } else if(state === 'skins'){
+    for(const c of skinCards){
+      if(hit(c, p)){
+        const s = SKINS[c.index];
+        if(save.skins.includes(s.name)){
+          save.equippedSkin = s.name;
+        } else if(s.price !== null && save.coins >= s.price){
+          save.coins -= s.price;
+          save.skins.push(s.name);
+          save.equippedSkin = s.name;
+          saveGame();
+        }
+        return;
+      }
+    }
+    if(hit(skinsBackBtn, p)){ state = 'store'; return; }
+  } else if(state === 'upgrades'){
+    if(hit(upgradesBackBtn, p)){ state = 'store'; return; }
   } else if(state === 'playing'){
     throwKnife();
   } else if(state === 'over'){
@@ -851,6 +1089,8 @@ function onKey(e){
     if(state === 'menu'){ startGame(); }
     else if(state === 'playing'){ throwKnife(); }
     else if(state === 'store'){ state = 'menu'; }
+    else if(state === 'skins'){ state = 'store'; }
+    else if(state === 'upgrades'){ state = 'store'; }
     else if(state === 'over' && stateTimer <= 0){ startGame(); }
   }
 }
