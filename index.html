@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Knife Hit — Pixel</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    height:100%;background:#12141f;overflow:hidden;touch-action:none;
+    display:flex;align-items:center;justify-content:center;
+    font-family:monospace;user-select:none;-webkit-user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  canvas{
+    display:block;image-rendering:pixelated;image-rendering:crisp-edges;
+    box-shadow:0 0 0 3px #2a2f4a, 0 0 70px rgba(0,0,0,.85);
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+(() => {
+'use strict';
+
+/* ========================================================
+   CANVAS
+======================================================== */
+const W = 240, H = 360;
+const cv = document.getElementById('game');
+cv.width = W; cv.height = H;
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function fit(){
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H) * 0.96;
+  cv.style.width  = Math.round(W * s) + 'px';
+  cv.style.height = Math.round(H * s) + 'px';
+}
+window.addEventListener('resize', fit);
+fit();
+
+/* ========================================================
+   CONST
+======================================================== */
+const TAU = Math.PI * 2;
+const LOG_X = W / 2;
+const LOG_Y = 150;
+const LOG_R = 40;
+const MIN_ANGLE = 0.135;
+const KNIFE_SPAWN_Y = 320;
+const KNIFE_SPEED = 700;
+
+const C = {
+  bg:    '#1b1f30',
+  bg2:   '#141826',
+  ground:'#20253a',
+  star1: '#2a3150',
+  star2: '#39406a',
+  text:  '#cfd8e3',
+  dim:   '#7d8bb0',
+  gold:  '#f2c14e',
+  red:   '#e05a5a',
+  green: '#7ee081'
+};
+
+/* ========================================================
+   PIXEL FONT 4x5
+======================================================== */
+const FONT = {
+  'A':['0110','1001','1111','1001','1001'],
+  'B':['1110','1001','1110','1001','1110'],
+  'C':['0111','1000','1000','1000','0111'],
+  'D':['1110','1001','1001','1001','1110'],
+  'E':['1111','1000','1110','1000','1111'],
+  'F':['1111','1000','1110','1000','1000'],
+  'G':['0111','1000','1011','1001','0111'],
+  'H':['1001','1001','1111','1001','1001'],
+  'I':['1110','0100','0100','0100','1110'],
+  'J':['0011','0001','0001','1001','0110'],
+  'K':['1001','1010','1100','1010','1001'],
+  'L':['1000','1000','1000','1000','1111'],
+  'M':['1001','1111','1111','1001','1001'],
+  'N':['1001','1101','1111','1011','1001'],
+  'O':['0110','1001','1001','1001','0110'],
+  'P':['1110','1001','1110','1000','1000'],
+  'Q':['0110','1001','1001','1011','0111'],
+  'R':['1110','1001','1110','1010','1001'],
+  'S':['0111','1000','0110','0001','1110'],
+  'T':['1111','0100','0100','0100','0100'],
+  'U':['1001','1001','1001','1001','0110'],
+  'V':['1001','1001','1001','0110','0100'],
+  'W':['1001','1001','1111','1111','1001'],
+  'X':['1001','1001','0110','1001','1001'],
+  'Y':['1001','1001','0110','0100','0100'],
+  'Z':['1111','0001','0110','1000','1111'],
+  '0':['0110','1011','1101','1001','0110'],
+  '1':['0100','1100','0100','0100','1110'],
+  '2':['1110','0001','0110','1000','1111'],
+  '3':['1110','0001','0110','0001','1110'],
+  '4':['1001','1001','1111','0001','0001'],
+  '5':['1111','1000','1110','0001','1110'],
+  '6':['0111','1000','1110','1001','0110'],
+  '7':['1111','0001','0010','0100','0100'],
+  '8':['0110','1001','0110','1001','0110'],
+  '9':['0110','1001','0111','0001','1110'],
+  ':':['0000','0100','0000','0100','0000'],
+  '!':['0100','0100','0100','0000','0100'],
+  '-':['0000','0000','1110','0000','0000'],
+  '+':['0000','0100','1110','0100','0000'],
+  '.':['0000','0000','0000','0000','0100'],
+  ' ':['0000','0000','0000','0000','0000'],
+  // Кириллица
+  'В':['1110','1001','1110','1001','1110'],
+  'Р':['1110','1001','1110','1000','1000'],
+  'А':['0110','1001','1111','1001','1001'],
+  'З':['1110','0001','0110','0001','1110'],
+  'Б':['1111','1000','1110','1001','1110'],
+  'О':['0110','1001','1001','1001','0110'],
+  'Т':['1111','0100','0100','0100','0100'],
+  'К':['1001','1010','1100','1010','1001'],
+  'Е':['1111','1000','1110','1000','1111']
+};
+
+function measure(str, sc = 1){ return str.length * 5 * sc - sc; }
+
+function drawText(str, x, y, col, sc = 1){
+  ctx.fillStyle = col;
+  let cx = x;
+  for(const raw of str.toUpperCase()){
+    const g = FONT[raw];
+    if(g){
+      for(let r = 0; r < 5; r++){
+        const row = g[r];
+        for(let c = 0; c < 4; c++){
+          if(row[c] === '1') ctx.fillRect(cx + c*sc, y + r*sc, sc, sc);
+        }
+      }
+    }
+    cx += 4*sc + sc;
+  }
+}
+
+function drawTextC(str, cx, y, col, sc = 1){
+  drawText(str, Math.round(cx - measure(str, sc) / 2), y, col, sc);
+}
+
+/* ========================================================
+   ЗВУК
+======================================================== */
+let actx = null;
+function initAudio(){
+  if(!actx){
+    try{ actx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ actx = null; }
+  }
+  if(actx && actx.state === 'suspended') actx.resume();
+}
+function beep(freq, dur, type = 'square', vol = 0.05, delay = 0){
+  if(!actx) return;
+  try{
+    const t = actx.currentTime + delay;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }catch(e){}
+}
+
+/* ========================================================
+   СОХРАНЕНИЕ
+======================================================== */
+const save = { level: 1, coins: 0 };
+
+function loadSave(){
+  try{
+    const s = localStorage.getItem('knifeHitSave');
+    if(s){
+      const d = JSON.parse(s);
+      save.level = Math.max(1, d.level || 1);
+      save.coins = Math.max(0, d.coins || 0);
+    }
+  }catch(e){}
+}
+function saveGame(){
+  try{ localStorage.setItem('knifeHitSave', JSON.stringify(save)); }catch(e){}
+}
+loadSave();
+window.addEventListener('visibilitychange', () => { if(document.hidden) saveGame(); });
+
+/* ========================================================
+   СПРАЙТ НОЖА
+======================================================== */
+const KN_W = 7, KN_H = 28;
+const KN_OX = 3, KN_OY = 17;
+
+const knifeSprite = (() => {
+  const c = document.createElement('canvas');
+  c.width = KN_W; c.height = KN_H;
+  const g = c.getContext('2d');
+  const put = (x, y, col) => { g.fillStyle = col; g.fillRect(x + KN_OX, y + KN_OY, 1, 1); };
+
+  const bladeEdge = '#eef4fb';
+  const bladeMid  = '#b6c2d4';
+  const guardCol  = '#e3bd52';
+  const guardDark = '#a8862f';
+  const handleMid = '#a9713a';
+  const handleSide= '#6b4226';
+  const pommel    = '#8b5a2b';
+
+  for(let y = -15; y <= -1; y++){
+    put(-1, y, bladeMid);
+    put( 0, y, bladeEdge);
+    put( 1, y, bladeMid);
+  }
+  put(0, -16, bladeEdge);
+
+  for(let x = -2; x <= 2; x++) put(x, 0, x === 0 ? guardCol : guardDark);
+
+  for(let y = 1; y <= 7; y++){
+    put(-1, y, handleSide);
+    put( 0, y, handleMid);
+    put( 1, y, handleSide);
+  }
+  for(let x = -1; x <= 1; x++) put(x, 8, pommel);
+
+  return c;
+})();
+
+function drawKnife(x, y, a){
+  if(Math.abs(a) < 0.0015){
+    ctx.drawImage(knifeSprite, Math.round(x) - KN_OX, Math.round(y) - KN_OY);
+  } else {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    ctx.drawImage(knifeSprite, -KN_OX, -KN_OY);
+    ctx.restore();
+  }
+}
+
+/* ========================================================
+   СПРАЙТ БРЕВНА
+======================================================== */
+const logSprite = (() => {
+  const S = LOG_R * 2;
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const g = c.getContext('2d');
+  const cx = LOG_R, cy = LOG_R;
+
+  for(let y = 0; y < S; y++){
+    for(let x = 0; x < S; x++){
+      const dx = x - cx + 0.5, dy = y - cy + 0.5;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if(d > LOG_R) continue;
+      let col;
+      if(d > LOG_R - 1)      col = '#3a2414';
+      else if(d > LOG_R - 4) col = '#6b4226';
+      else col = (Math.floor(d / 5) % 2) ? '#9c6a38' : '#8a5a2c';
+      g.fillStyle = col;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+
+  for(let i = 0; i < 6; i++){
+    const a0 = i * (TAU / 6) + 0.4;
+    for(let rr = 7; rr < LOG_R - 4; rr++){
+      const a = a0 + rr * 0.045;
+      const px = Math.floor(cx + Math.cos(a) * rr);
+      const py = Math.floor(cy + Math.sin(a) * rr);
+      g.fillStyle = '#73472a';
+      g.fillRect(px, py, 1, 1);
+      if(rr % 9 < 4){
+        g.fillStyle = '#6b4226';
+        g.fillRect(px + 1, py, 1, 1);
+      }
+    }
+  }
+  return c;
+})();
+
+/* ========================================================
+   ИКОНКА МОНЕТЫ
+======================================================== */
+function drawCoinIcon(x, y){
+  ctx.fillStyle = '#a8862f';
+  ctx.fillRect(x + 1, y,     3, 5);
+  ctx.fillRect(x,     y + 1, 5, 3);
+  ctx.fillStyle = C.gold;
+  ctx.fillRect(x + 1, y + 1, 3, 3);
+  ctx.fillStyle = '#fef3c7';
+  ctx.fillRect(x + 1, y + 1, 1, 1);
+}
+
+/* ========================================================
+   ФОН
+======================================================== */
+const stars = [];
+for(let i = 0; i < 70; i++){
+  stars.push({
+    x: Math.floor(Math.random() * W),
+    y: Math.floor(Math.random() * (H - 30)),
+    c: Math.random() < 0.6 ? C.star1 : C.star2
+  });
+}
+
+/* ========================================================
+   КНОПКИ
+======================================================== */
+const menuPlayBtn  = { x: 55, y: 214, w: 130, h: 28, label: 'PLAY'  };
+const menuStoreBtn = { x: 55, y: 254, w: 130, h: 28, label: 'STORE' };
+const storeBackBtn = { x: 55, y: 270, w: 130, h: 28, label: 'BACK'  };
+const overRetryBtn = { x: 40,  y: 230, w: 75,  h: 26, label: 'RETRY' };
+const overMenuBtn  = { x: 125, y: 230, w: 75,  h: 26, label: 'MENU'  };
+
+function hit(btn, p){
+  return p.x >= btn.x && p.x <= btn.x + btn.w &&
+         p.y >= btn.y && p.y <= btn.y + btn.h;
+}
+
+function drawButton(btn, baseCol, borderCol, textCol){
+  ctx.fillStyle = borderCol;
+  ctx.fillRect(btn.x - 1, btn.y - 1, btn.w + 2, btn.h + 2);
+  ctx.fillStyle = baseCol;
+  ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(btn.x, btn.y, btn.w, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(btn.x, btn.y + btn.h - 1, btn.w, 1);
+  drawTextC(btn.label, btn.x + btn.w / 2,
+            btn.y + Math.floor((btn.h - 5) / 2), textCol, 1);
+}
+
+/* ========================================================
+   СОСТОЯНИЕ ИГРЫ
+======================================================== */
+let state = 'menu';               // menu | store | playing | clear | over
+let log = { angle: 0 };
+let stuck   = [];
+let flying  = [];
+let falling = [];
+let score = 0;
+let level = 1;
+let knivesRequired = 7;
+let knivesLeft = 7;
+let cooldown = 0;
+let stateTimer = 0;
+let shake = 0;
+
+/* ========================================================
+   СИСТЕМА ВРАЩЕНИЯ
+   С каждым уровнем паттерн вращения становится сложнее:
+   1-3   — простое медленное вращение
+   4-6   — ускорение
+   7-9   — плавное ускорение/замедление (осцилляция)
+   10-12 — осцилляция + короткие паузы
+   13-15 — осцилляция + смена направления
+   16+   — осцилляция + паузы + смена направления (всё растёт)
+======================================================== */
+const rot = {
+  baseSpeed: 1.05,     // базовая угловая скорость, рад/с
+  dir: -1,
+  oscAmp: 0,           // амплитуда осцилляции (доля от baseSpeed)
+  oscFreq: 0,          // частота осцилляции, Гц
+  pauseEvery: 0,       // пауза каждые N секунд
+  pauseDur: 0,         // длительность паузы
+  pauseTimer: 0,
+  pauseLeft: 0,
+  flipEvery: 0,        // смена направления каждые N секунд
+  flipTimer: 0,
+  phase: 0
+};
+
+function setupRotation(lvl){
+  rot.dir = lvl % 2 === 0 ? 1 : -1;
+  rot.phase = Math.random() * TAU;
+  rot.oscAmp = 0;
+  rot.oscFreq = 0;
+  rot.pauseEvery = 0;
+  rot.pauseDur = 0;
+  rot.flipEvery = 0;
+  rot.pauseLeft = 0;
+
+  if(lvl <= 3){
+    // Простое медленное вращение
+    rot.baseSpeed = 0.9 + lvl * 0.15;
+  } else if(lvl <= 6){
+    // Ускорение
+    rot.baseSpeed = 1.4 + (lvl - 4) * 0.3;
+  } else if(lvl <= 9){
+    // Плавное ускорение/замедление
+    rot.baseSpeed = 1.6 + (lvl - 7) * 0.25;
+    rot.oscAmp  = 0.6;
+    rot.oscFreq = 0.30 + (lvl - 7) * 0.06;
+  } else if(lvl <= 12){
+    // Осцилляция + короткие паузы
+    rot.baseSpeed = 1.9 + (lvl - 10) * 0.2;
+    rot.oscAmp  = 0.4;
+    rot.oscFreq = 0.5;
+    rot.pauseEvery = 3.5 - (lvl - 10) * 0.3;
+    rot.pauseDur   = 0.5;
+  } else if(lvl <= 15){
+    // Осцилляция + смена направления
+    rot.baseSpeed = 2.0 + (lvl - 13) * 0.2;
+    rot.oscAmp  = 0.4;
+    rot.oscFreq = 0.6;
+    rot.flipEvery = 2.5 - (lvl - 13) * 0.2;
+  } else {
+    // Всё вместе — сложность растёт
+    const t = lvl - 15;
+    rot.baseSpeed = Math.min(3.5, 2.4 + t * 0.12);
+    rot.oscAmp  = Math.min(0.6, 0.4 + t * 0.02);
+    rot.oscFreq = Math.min(1.2, 0.5 + t * 0.03);
+    rot.pauseEvery = Math.max(2.0, 3.0 - t * 0.08);
+    rot.pauseDur   = Math.min(0.6, 0.4 + t * 0.015);
+    rot.flipEvery  = Math.max(1.2, 2.5 - t * 0.06);
+  }
+
+  rot.pauseTimer = rot.pauseEvery;
+  rot.flipTimer  = rot.flipEvery;
+}
+
+function updateRotationSpeed(dt){
+  // осцилляция фазы идёт всегда (чтобы не было скачков после паузы)
+  rot.phase += dt * rot.oscFreq * TAU;
+
+  // пауза
+  if(rot.pauseLeft > 0){
+    rot.pauseLeft -= dt;
+    return 0;
+  }
+  if(rot.pauseEvery > 0){
+    rot.pauseTimer -= dt;
+    if(rot.pauseTimer <= 0){
+      rot.pauseLeft  = rot.pauseDur;
+      rot.pauseTimer = rot.pauseEvery;
+      return 0;
+    }
+  }
+
+  // смена направления
+  if(rot.flipEvery > 0){
+    rot.flipTimer -= dt;
+    if(rot.flipTimer <= 0){
+      rot.dir *= -1;
+      rot.flipTimer = rot.flipEvery;
+    }
+  }
+
+  const osc = Math.sin(rot.phase) * rot.oscAmp;
+  return rot.baseSpeed * (1 + osc) * rot.dir;
+}
+
+/* ========================================================
+   ЗАПУСК / ПЕРЕХОД
+======================================================== */
+function startGame(){
+  score = 0;
+  level = 1;
+  knivesRequired = 7;
+  knivesLeft = 7;
+  log.angle = Math.random() * TAU;
+  setupRotation(1);
+  stuck = [];
+  flying = [];
+  falling = [];
+  cooldown = 0;
+  shake = 0;
+  state = 'playing';
+  beep(440, 0.07, 'square', 0.05);
+}
+
+function nextLevel(){
+  level++;
+  knivesRequired = Math.min(12, 6 + level);
+  knivesLeft = knivesRequired;
+  setupRotation(level);
+  log.angle = Math.random() * TAU;
+  stuck = [];
+  state = 'playing';
+}
+
+/* ========================================================
+   ДЕЙСТВИЯ
+======================================================== */
+function throwKnife(){
+  if(state !== 'playing') return;
+  if(knivesLeft <= 0 || cooldown > 0) return;
+  cooldown = 0.09;
+  knivesLeft--;
+  flying.push({ x: LOG_X, y: KNIFE_SPAWN_Y });
+  beep(200, 0.05, 'square', 0.035);
+}
+
+function stickKnife(k){
+  const phi = Math.PI / 2;
+  let rel = ((phi - log.angle) % TAU + TAU) % TAU;
+
+  for(const s of stuck){
+    let d = Math.abs(rel - s.rel);
+    if(d > Math.PI) d = TAU - d;
+    if(d < MIN_ANGLE){
+      gameOver(k);
+      return;
+    }
+  }
+
+  stuck.push({ rel });
+  score++;
+  save.coins++;
+  shake = 0.45;
+  beep(520 + Math.random() * 60, 0.07, 'square', 0.05);
+
+  if(stuck.length >= knivesRequired) levelClear();
+}
+
+function levelClear(){
+  state = 'clear';
+  stateTimer = 0.95;
+  save.coins += 5;
+  save.level += 1;
+  saveGame();
+
+  beep(660, 0.07, 'square', 0.05);
+  beep(880, 0.08, 'square', 0.05, 0.09);
+  beep(1180, 0.12, 'square', 0.05, 0.19);
+
+  for(const s of stuck){
+    const phi = s.rel + log.angle;
+    const px = LOG_X + Math.cos(phi) * (LOG_R + 1);
+    const py = LOG_Y + Math.sin(phi) * (LOG_R + 1);
+    falling.push({
+      x: px, y: py,
+      vx: Math.cos(phi) * 130 + (Math.random() - 0.5) * 70,
+      vy: Math.sin(phi) * 130 - 110,
+      rot: phi - Math.PI / 2,
+      vrot: (Math.random() - 0.5) * 12
+    });
+  }
+  stuck = [];
+}
+
+function gameOver(k){
+  state = 'over';
+  stateTimer = 0.65;
+  shake = 1.6;
+  beep(140, 0.35, 'sawtooth', 0.07);
+  saveGame();
+  if(k){
+    falling.push({
+      x: k.x, y: k.y,
+      vx: (Math.random() - 0.5) * 120,
+      vy: -90,
+      rot: 0,
+      vrot: (Math.random() - 0.5) * 14
+    });
+  }
+}
+
+/* ========================================================
+   ОБНОВЛЕНИЕ
+======================================================== */
+function update(dt){
+  cooldown = Math.max(0, cooldown - dt);
+  shake = Math.max(0, shake - dt * 5);
+
+  if(state === 'playing'){
+    log.angle += updateRotationSpeed(dt) * dt;
+    if(Math.abs(log.angle) > 1000) log.angle %= TAU;
+  } else if(state === 'clear'){
+    log.angle += 4.0 * dt;
+    if(Math.abs(log.angle) > 1000) log.angle %= TAU;
+  }
+
+  if(state === 'clear'){
+    stateTimer -= dt;
+    if(stateTimer <= 0) nextLevel();
+  }
+  if(state === 'over'){
+    stateTimer = Math.max(0, stateTimer - dt);
+  }
+
+  // летящие ножи
+  for(let i = flying.length - 1; i >= 0; i--){
+    const k = flying[i];
+    k.y -= KNIFE_SPEED * dt;
+    if(k.y <= LOG_Y + LOG_R){
+      k.y = LOG_Y + LOG_R;
+      flying.splice(i, 1);
+      stickKnife(k);
+    }
+  }
+
+  // падающие ножи
+  for(let i = falling.length - 1; i >= 0; i--){
+    const f = falling[i];
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+    f.vy += 700 * dt;
+    f.rot += f.vrot * dt;
+    if(f.y > H + 60) falling.splice(i, 1);
+  }
+}
+
+/* ========================================================
+   ОТРИСОВКА МИРА
+======================================================== */
+function drawBackground(){
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, W, H);
+  for(const s of stars){
+    ctx.fillStyle = s.c;
+    ctx.fillRect(s.x, s.y, 1, 1);
+  }
+  ctx.fillStyle = C.bg2;
+  ctx.fillRect(0, H - 26, W, 26);
+  ctx.fillStyle = C.ground;
+  ctx.fillRect(0, H - 26, W, 1);
+}
+
+function drawWorld(){
+  // 1) ВОТКНУТЫЕ НОЖИ — под бревном.
+  //    Лезвие полностью скрыто, торчит только рукоять.
+  for(const s of stuck){
+    const phi = s.rel + log.angle;
+    const px = LOG_X + Math.cos(phi) * (LOG_R + 0.5);
+    const py = LOG_Y + Math.sin(phi) * (LOG_R + 0.5);
+    drawKnife(px, py, phi - Math.PI / 2);
+  }
+
+  // 2) ЛЕТЯЩИЕ НОЖИ — тоже под бревном!
+  //    Благодаря этому лезвие не «вспыхивает» над деревом,
+  //    а плавно скрывается внутрь, как только входит в пень.
+  for(const k of flying) drawKnife(k.x, k.y, 0);
+
+  // 3) БРЕВНО — поверх всех лезвий
+  ctx.save();
+  ctx.translate(LOG_X, LOG_Y);
+  ctx.rotate(log.angle);
+  ctx.drawImage(logSprite, -LOG_R, -LOG_R);
+  ctx.restore();
+
+  // 4) ПАДАЮЩИЕ НОЖИ — поверх бревна (разлёт при зачистке / промахе)
+  for(const f of falling) drawKnife(f.x, f.y, f.rot);
+
+  // 5) НОЖ В РУКЕ
+  if(state === 'playing' && knivesLeft > 0 && cooldown < 0.05){
+    const bob = Math.sin(performance.now() / 190) * 1.6;
+    drawKnife(LOG_X, KNIFE_SPAWN_Y + bob, 0);
+  }
+}
+
+/* ========================================================
+   HUD
+======================================================== */
+function drawHUD(){
+  drawText('LV ' + level, 6, 6, C.dim, 1);
+
+  const sc = String(score);
+  drawText(sc, W - 6 - measure(sc, 1), 6, C.dim, 1);
+
+  const coinStr = String(save.coins);
+  const cw = measure(coinStr, 1);
+  drawText(coinStr, W - 6 - cw, 18, C.gold, 1);
+  drawCoinIcon(W - 6 - cw - 9, 18);
+
+  if(state === 'playing' || state === 'clear'){
+    drawText('X' + knivesLeft, LOG_X + 18, KNIFE_SPAWN_Y - 8, C.dim, 1);
+  }
+}
+
+/* ========================================================
+   ЭКРАНЫ
+======================================================== */
+function drawMenu(){
+  ctx.fillStyle = 'rgba(18,20,31,0.90)';
+  ctx.fillRect(0, 0, W, H);
+
+  const t = performance.now() / 1000;
+
+  drawKnife(42, 74, -0.35 + Math.sin(t * 1.2) * 0.06);
+  drawKnife(W - 42, 74, 0.35 - Math.sin(t * 1.2) * 0.06);
+
+  drawTextC('KNIFE', W / 2, 54, C.gold, 4);
+  drawTextC('HIT',   W / 2, 84, C.gold, 4);
+  drawTextC('PIXEL', W / 2, 118, C.dim, 2);
+
+  // панель статистики
+  const px = 40, py = 160, pw = 160, ph = 26;
+  ctx.fillStyle = '#1a1f33';
+  ctx.fillRect(px, py, pw, ph);
+  ctx.fillStyle = '#3a4160';
+  ctx.fillRect(px, py, pw, 1);
+  ctx.fillRect(px, py + ph - 1, pw, 1);
+  ctx.fillRect(px, py, 1, ph);
+  ctx.fillRect(px + pw - 1, py, 1, ph);
+
+  drawText('LVL ' + save.level, px + 10, py + 10, C.text, 1);
+
+  const coinStr = String(save.coins);
+  const cw = measure(coinStr, 1);
+  const coinX = px + pw - 10 - cw;
+  drawText(coinStr, coinX, py + 10, C.gold, 1);
+  drawCoinIcon(coinX - 9, py + 10);
+
+  drawButton(menuPlayBtn,  '#365c36', '#5aa35a', '#e6f5e6');
+  drawButton(menuStoreBtn, '#36365c', '#5a5aa3', '#e6e6f5');
+}
+
+function drawStore(){
+  ctx.fillStyle = 'rgba(18,20,31,0.96)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawTextC('STORE', W / 2, 26, C.gold, 3);
+
+  const px = 25, py = 78, pw = 190, ph = 140;
+  ctx.fillStyle = '#1a1f33';
+  ctx.fillRect(px, py, pw, ph);
+  ctx.fillStyle = '#3a4160';
+  ctx.fillRect(px, py, pw, 1);
+  ctx.fillRect(px, py + ph - 1, pw, 1);
+  ctx.fillRect(px, py, 1, ph);
+  ctx.fillRect(px + pw - 1, py, 1, ph);
+
+  drawHammer(W / 2 - 3, py + 22);
+
+  const t = performance.now() / 1000;
+  const blink = Math.sin(t * 3) > -0.55 ? 1 : 0.35;
+  ctx.globalAlpha = blink;
+  drawTextC('В РАЗРАБОТКЕ', W / 2, py + 62, C.gold, 2);
+  ctx.globalAlpha = 1;
+
+  drawTextC('СЛЕДИТЕ ЗА ОБНОВЛЕНИЯМИ', W / 2, py + 100, C.dim, 1);
+
+  drawButton(storeBackBtn, '#36365c', '#5a5aa3', '#e6e6f5');
+}
+
+function drawHammer(x, y){
+  ctx.fillStyle = '#6b4226';
+  ctx.fillRect(x + 2, y + 4, 2, 9);
+  ctx.fillStyle = '#a9713a';
+  ctx.fillRect(x + 2, y + 4, 1, 9);
+  ctx.fillStyle = '#8a95a8';
+  ctx.fillRect(x, y, 6, 4);
+  ctx.fillStyle = '#eef4fb';
+  ctx.fillRect(x, y, 6, 1);
+  ctx.fillStyle = '#b6c2d4';
+  ctx.fillRect(x, y + 1, 6, 2);
+  ctx.fillStyle = '#8a95a8';
+  ctx.fillRect(x, y + 3, 6, 1);
+}
+
+function drawGameOver(){
+  ctx.fillStyle = 'rgba(18,20,31,0.82)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawTextC('GAME OVER', W / 2, 96, C.red, 2);
+  drawTextC('SCORE ' + score, W / 2, 132, C.text, 2);
+  drawTextC('LEVEL ' + level, W / 2, 156, C.dim, 1);
+
+  drawTextC('COINS', W / 2, 176, C.dim, 1);
+
+  drawButton(overRetryBtn, '#365c36', '#5aa35a', '#e6f5e6');
+  drawButton(overMenuBtn,  '#36365c', '#5a5aa3', '#e6e6f5');
+}
+
+/* ========================================================
+   ГЛАВНЫЙ RENDER
+======================================================== */
+function render(){
+  drawBackground();
+
+  if(state === 'menu'){  drawMenu();  return; }
+  if(state === 'store'){ drawStore(); return; }
+
+  ctx.save();
+  if(shake > 0){
+    const sx = Math.round((Math.random() - 0.5) * shake * 6);
+    const sy = Math.round((Math.random() - 0.5) * shake * 6);
+    ctx.translate(sx, sy);
+  }
+  drawWorld();
+  ctx.restore();
+
+  drawHUD();
+
+  if(state === 'clear'){
+    drawTextC('LEVEL CLEAR', W / 2, 60, C.gold, 2);
+    drawTextC('+5 COINS', W / 2, 80, C.gold, 1);
+  }
+
+  if(state === 'over') drawGameOver();
+}
+
+/* ========================================================
+   ЦИКЛ
+======================================================== */
+let lastTime = performance.now();
+function loop(now){
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  if(dt > 0.05) dt = 0.05;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ========================================================
+   ВВОД
+======================================================== */
+function getPointerPos(e){
+  const r = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) / r.width  * W,
+    y: (e.clientY - r.top ) / r.height * H
+  };
+}
+
+function onPointer(e){
+  if(e.cancelable) e.preventDefault();
+  initAudio();
+  const p = getPointerPos(e);
+
+  if(state === 'menu'){
+    if(hit(menuPlayBtn, p)){  startGame(); return; }
+    if(hit(menuStoreBtn, p)){ state = 'store'; return; }
+  } else if(state === 'store'){
+    if(hit(storeBackBtn, p)){ state = 'menu'; return; }
+  } else if(state === 'playing'){
+    throwKnife();
+  } else if(state === 'over'){
+    if(stateTimer <= 0){
+      if(hit(overRetryBtn, p)){ startGame(); return; }
+      if(hit(overMenuBtn, p)){  state = 'menu'; return; }
+    }
+  }
+}
+
+function onKey(e){
+  if(e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter'){
+    e.preventDefault();
+    initAudio();
+    if(state === 'menu'){ startGame(); }
+    else if(state === 'playing'){ throwKnife(); }
+    else if(state === 'store'){ state = 'menu'; }
+    else if(state === 'over' && stateTimer <= 0){ startGame(); }
+  }
+}
+
+window.addEventListener('pointerdown', onPointer, { passive: false });
+window.addEventListener('keydown', onKey);
+window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+})();
+</script>
+</body>
+</html>
