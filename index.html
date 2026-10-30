@@ -20,8 +20,12 @@
 </style>
 </head>
 <body>
-<canvas id="bg" style="position:absolute;top:0;left:0;width:100vw;height:100vh;pointer-events:none;"></canvas>
+<canvas id="bg" style="position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;"></canvas>
 <canvas id="game" style="position:relative;z-index:1;"></canvas>
+<div id="adModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
+  <div ta-ad-container="" style="width:100%;max-width:320px;height:auto;"></div>
+  <button id="closeAdBtn" style="display:none;margin-top:16px;padding:8px 24px;font:14px monospace;background:#e05a5a;color:#fff;border:none;border-radius:4px;cursor:pointer;">Продолжить</button>
+</div>
 
 <script>
 (() => {
@@ -644,6 +648,18 @@ function startGame(){
   beep(440, 0.07, 'square', 0.05);
 }
 
+function showAdModal(){
+  const modal = document.getElementById('adModal');
+  const closeBtn = document.getElementById('closeAdBtn');
+  modal.style.display = 'flex';
+  closeBtn.style.display = 'none';
+  setTimeout(() => { closeBtn.style.display = 'block'; }, 3000);
+  closeBtn.onclick = () => {
+    modal.style.display = 'none';
+    startGame();
+  };
+}
+
 function nextLevel(){
   level++;
   knivesRequired = Math.min(12, 6 + level);
@@ -1087,7 +1103,7 @@ function onPointer(e){
   const p = getPointerPos(e);
 
   if(state === 'menu'){
-    if(hit(menuPlayBtn, p)){  startGame(); return; }
+    if(hit(menuPlayBtn, p)){ showAdModal(); return; }
     if(hit(menuStoreBtn, p)){ state = 'store'; return; }
   } else if(state === 'store'){
     if(hit(storeBackBtn, p)){ state = 'menu'; return; }
@@ -1125,7 +1141,7 @@ function onKey(e){
   if(e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter'){
     e.preventDefault();
     initAudio();
-    if(state === 'menu'){ startGame(); }
+    if(state === 'menu'){ showAdModal(); }
     else if(state === 'playing'){ throwKnife(); }
     else if(state === 'store'){ state = 'menu'; }
     else if(state === 'skins'){ state = 'store'; }
