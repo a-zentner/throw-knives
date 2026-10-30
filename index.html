@@ -54,7 +54,7 @@ window.addEventListener('resize', bgResize);
 bgResize();
 
 const bgStars = [];
-for(let i = 0; i < 150; i++){
+for(let i = 0; i < 64; i++){
   bgStars.push({
     x: Math.random() * bg.width,
     y: Math.random() * bg.height,
@@ -73,15 +73,13 @@ function updateBgStars(dt){
 function drawBgStars(){
   bctx.fillStyle = '#12141f';
   bctx.fillRect(0, 0, bg.width, bg.height);
-  bctx.shadowBlur = 2;
   for(const s of bgStars){
     const a = 0.5 + Math.sin(s.tw) * 0.4;
     bctx.fillStyle = '#ffffff';
     bctx.globalAlpha = a;
-    bctx.fillRect(s.x, s.y, 2, 2);
+    bctx.fillRect(s.x, s.y, 1, 1);
     bctx.globalAlpha = 1;
   }
-  bctx.shadowBlur = 0;
 }
 
 /* ========================================================
@@ -1142,5 +1140,7 @@ window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 })();
 </script>
+<script src="https://cdn.apitiny.net/scripts/v2.0/main.js" data-site-id="6ae43465135672857a09aa8a" data-test-mode="false" async></script>
+<div ta-ad-container="" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:320px;height:auto;z-index:200;pointer-events:none;"></div>
 </body>
 </html>
