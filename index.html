@@ -22,10 +22,6 @@
 <body>
 <canvas id="bg" style="position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;"></canvas>
 <canvas id="game" style="position:relative;z-index:1;"></canvas>
-<div id="adModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
-  <div ta-ad-container="" style="width:100%;max-width:320px;height:auto;"></div>
-  <button id="closeAdBtn" style="display:none;margin-top:16px;padding:8px 24px;font:14px monospace;background:#e05a5a;color:#fff;border:none;border-radius:4px;cursor:pointer;">Продолжить</button>
-</div>
 
 <script>
 (() => {
@@ -648,18 +644,6 @@ function startGame(){
   beep(440, 0.07, 'square', 0.05);
 }
 
-function showAdModal(){
-  const modal = document.getElementById('adModal');
-  const closeBtn = document.getElementById('closeAdBtn');
-  modal.style.display = 'flex';
-  closeBtn.style.display = 'none';
-  setTimeout(() => { closeBtn.style.display = 'block'; }, 3000);
-  closeBtn.onclick = () => {
-    modal.style.display = 'none';
-    startGame();
-  };
-}
-
 function nextLevel(){
   level++;
   knivesRequired = Math.min(12, 6 + level);
@@ -1103,7 +1087,7 @@ function onPointer(e){
   const p = getPointerPos(e);
 
   if(state === 'menu'){
-    if(hit(menuPlayBtn, p)){ showAdModal(); return; }
+    if(hit(menuPlayBtn, p)){  startGame(); return; }
     if(hit(menuStoreBtn, p)){ state = 'store'; return; }
   } else if(state === 'store'){
     if(hit(storeBackBtn, p)){ state = 'menu'; return; }
@@ -1141,7 +1125,7 @@ function onKey(e){
   if(e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'Enter'){
     e.preventDefault();
     initAudio();
-    if(state === 'menu'){ showAdModal(); }
+    if(state === 'menu'){ startGame(); }
     else if(state === 'playing'){ throwKnife(); }
     else if(state === 'store'){ state = 'menu'; }
     else if(state === 'skins'){ state = 'store'; }
@@ -1156,6 +1140,34 @@ window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 })();
 </script>
-<script src="https://cdn.apitiny.net/scripts/v2.0/main.js" data-site-id="6ae43ca9135672857a09aa90" data-test-mode="false" async></script>
+<!-- BEGIN AADS AD UNIT 2460412 -->
+<div style="position: absolute; z-index: 99999">
+      <input autocomplete="off" type="checkbox" id="aadsstickymvump2tl" hidden />
+      <div style="padding-top: 0; padding-bottom: auto;">
+        <div style="width:100%;height:auto;position:fixed;text-align:center;font-size:0;bottom:0;left:0;right:0;margin:auto">
+          <label for="aadsstickymvump2tl" style="top: 50%;transform: translateY(-50%);right:24px;; position: absolute;border-radius: 4px; background: rgba(248, 248, 249, 0.70); padding: 4px;z-index: 99999;cursor:pointer">
+            <svg fill="#000000" height="16px" width="16px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 490">
+              <polygon points="456.851,0 245,212.564 33.149,0 0.708,32.337 212.669,245.004 0.708,457.678 33.149,490 245,277.443 456.851,490 489.292,457.678 277.331,245.004 489.292,32.337 "/>
+            </svg>
+          </label>
+          <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
+                          <div style="width: 70%;margin:auto;text-align:left;position: absolute;left: 0;right: 0; top:-24px">
+                            <a style="display:inline-block;font-size: 13px;color: #263238;padding: 4px 10px;background: #F8F8F9;text-decoration: none; border-radius: 4px 4px 0 0;"
+                              id="frame-link"
+                              target="_blank"
+                              href="https://aads.com/campaigns/new?source_id=2460412&source_type=ad_unit&partner=2460412">
+                              Advertise here
+                            </a>
+                          </div>
+                        <iframe data-aa=2460412 src=//acceptable.a-ads.com/2460412/?size=Adaptive style='border:0; padding:0; width:70%; height:auto; overflow:hidden; margin: auto'></iframe>
+                    </div>
+        </div>
+        <style>
+      #aadsstickymvump2tl:checked + div {
+        display: none;
+      }
+    </style>
+    </div></div>
+<!-- END AADS AD UNIT 2460412 -->
 </body>
 </html>
